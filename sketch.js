@@ -1,70 +1,99 @@
-var over = true;
-
-function eqtri(size, x = 0, y = 0, angle = 0) {
-    this.s = size;
-    this.pos = createVector(x, y);
-    this.a = angle;
-
-    this.h = () => this.s * (.75 ** .5);
-    this.draw = function () {
-        angleMode(DEGREES);
-
-        var offset = createVector(0, -this.h() * (2 / 3));
-        offset.rotate(this.a);
-        offset.rotate(30);
-
-        noStroke();
-        fill(255);
-        beginShape();
+"use strict";
+const cnv = document.body.appendChild(document.createElement("canvas"));
+const ctx = cnv.getContext("2d");
+const SQRT_PI = Math.sqrt(Math.PI);
+let needsResize = true;
+let clear;
+let drawSquare;
+let drawTriangle;
+let drawLine;
+let drawOuterCircle;
+let drawInnerCircle;
+function resize() {
+    needsResize = false;
+    cnv.width = window.innerWidth;
+    cnv.height = window.innerHeight;
+    const max = Math.max(cnv.width, cnv.height);
+    const radius = max / 2 / 4;
+    {
+        const halfWidth = cnv.width / 2;
+        const halfHeight = cnv.height / 2;
+        clear = () => {
+            ctx.resetTransform();
+            ctx.clearRect(0, 0, cnv.width, cnv.height);
+            ctx.translate(halfWidth, halfHeight);
+        };
+    }
+    {
+        const offset = Math.round(SQRT_PI * radius / 2);
+        drawSquare = () => {
+            ctx.fillStyle = "#f003";
+            ctx.beginPath();
+            for (let i = 0; i < 4; i++) {
+                ctx.rect(offset, -max, 2, max * 2);
+                ctx.rotate(Math.PI / 2);
+            }
+            ctx.fill();
+        };
+    }
+    {
+        const points = [];
         for (let i = 0; i < 3; i++) {
-            vertex(this.pos.x + offset.x, this.pos.y + offset.y)
-            offset.rotate(120);
+            const a = Math.PI * 2 / 3 * i;
+            points.push([Math.cos(a) * radius, Math.sin(a) * radius]);
         }
-        endShape(CLOSE);
+        drawTriangle = (t) => {
+            ctx.fillStyle = "#fff";
+            ctx.rotate(t);
+            ctx.beginPath();
+            for (const [x, y] of points) {
+                ctx.lineTo(x, y);
+            }
+            ctx.fill();
+            ctx.rotate(-t);
+        };
     }
-    this.rotate = function (td) {
-        this.a += td;
+    {
+        const rad4th = radius / 4;
+        const len = -radius * 1.5;
+        drawLine = (t) => {
+            ctx.fillStyle = "#00f5";
+            ctx.fillRect(rad4th * (Math.cos(3 * t) + 3), -1, len, 2);
+        };
+    }
+    {
+        drawOuterCircle = () => {
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = Math.SQRT2;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius + ctx.lineWidth / 2, 0, Math.PI * 2);
+            ctx.stroke();
+        };
+    }
+    {
+        const width = Math.SQRT2 ** 1.5;
+        const rad = (radius - width) / 2;
+        drawInnerCircle = () => {
+            ctx.lineWidth = width;
+            ctx.beginPath();
+            ctx.arc(0, 0, rad, 0, Math.PI * 2);
+            ctx.stroke();
+        };
     }
 }
-
-var tri;
-
-function setup() {
-    createCanvas(windowWidth, windowHeight);
-    tri = new eqtri((width>height?height:width)/3);
-}
-
-function draw() {
-    translate(width / 2, height / 2);
-    background(200);
-
-    tri.a = frameCount / 3 * 2;
-    tri.draw();
-
-    if (over) {
-        noFill();
-        stroke(255, 0, 0, 64);
-        line(-tri.s/2, -height, -tri.s/2, height);
-        line(tri.s/2, -height, tri.s/2, height);
-        line(-width, -tri.s/2, width, -tri.s/2);
-        line(-width, tri.s/2, width, tri.s/2);
-
-        stroke(32, 64, 200);
-        var x = -tri.h() * map(cos(frameCount / 1 * 2), -1, 1, 1, 2) / 3;
-        var y = +tri.h() * map(cos(frameCount / 1 * 2), -1, 1, 2, 1) / 3;
-        line(x, 0, y, 0);
-
-        stroke(0);
-        ellipse(0, 0, 2*tri.h()/3);
-        ellipse(0, 0, 4*tri.h()/3);
+window.addEventListener("resize", () => { needsResize = true; });
+const start = performance.now();
+function draw(now) {
+    const t = (now - start) / 1500;
+    if (needsResize) {
+        resize();
     }
+    clear();
+    drawSquare();
+    drawTriangle(t);
+    drawLine(t);
+    drawOuterCircle();
+    drawInnerCircle();
+    requestAnimationFrame(draw);
 }
-
-function windowResized() {
-    resizeCanvas(windowWidth,windowHeight);
-    tri.s = (width>height?height:width)/3;
-}
-
-function mousePressed() {
-    over = !over;
-}
+requestAnimationFrame(draw);
